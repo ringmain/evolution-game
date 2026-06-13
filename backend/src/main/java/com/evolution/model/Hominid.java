@@ -25,8 +25,14 @@ public class Hominid {
     
     private double visibleScleraPercentage; // 0.0 - 100.0
     private boolean isAlpha;
+    
+    // Motherhood tracking
     private boolean isBlockedMother;
     private int monthsBlockedRemaining;
+    
+    // Pregnancy tracking
+    private boolean isPregnant;
+    private int monthsPregnancyRemaining;
 
     public enum LifeStage {
         INFANT, ADULT, SENIOR

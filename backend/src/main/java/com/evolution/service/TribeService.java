@@ -21,9 +21,6 @@ public class TribeService {
     private final SimulationEngine simulationEngine;
     private Tribe tribe;
 
-    /**
-     * Initializes the game state upon application startup if it doesn't already exist.
-     */
     @PostConstruct
     public void initGame() {
         if (this.tribe != null) {
@@ -35,7 +32,7 @@ public class TribeService {
 
         // Generate 3 MALEs
         for (int i = 0; i < 3; i++) {
-            boolean isAlpha = (i == 0); // Exactly ONE male is alpha
+            boolean isAlpha = (i == 0);
             initialMembers.add(createHominid("MALE", isAlpha, random));
         }
 
@@ -44,7 +41,6 @@ public class TribeService {
             initialMembers.add(createHominid("FEMALE", false, random));
         }
 
-        // Set default priorities
         Map<String, Double> defaultPriorities = new HashMap<>();
         defaultPriorities.put("SBER", 0.5);
         defaultPriorities.put("LOV", 0.5);
@@ -58,11 +54,7 @@ public class TribeService {
                 .build();
     }
 
-    /**
-     * Helper method to generate an individual hominid with initial default stats.
-     */
     private Hominid createHominid(String gender, boolean isAlpha, ThreadLocalRandom random) {
-        // Random age between 180 and 240 months (15-20 years)
         int ageInMonths = random.nextInt(180, 241);
 
         return Hominid.builder()
@@ -76,31 +68,40 @@ public class TribeService {
                 .isAlpha(isAlpha)
                 .isBlockedMother(false)
                 .monthsBlockedRemaining(0)
+                .isPregnant(false)
+                .monthsPregnancyRemaining(0)
                 .build();
     }
 
-    /**
-     * Returns the current state of the tribe.
-     */
     public Tribe getTribe() {
         return this.tribe;
     }
 
-    /**
-     * Triggers a single simulation tick (1 month) and updates the tribe's state.
-     */
     public void nextTick() {
         if (this.tribe != null) {
             simulationEngine.executeTick(this.tribe);
         }
     }
 
-    /**
-     * Updates the tribe's work priorities.
-     */
+    public void nextTicks(int count) {
+        if (this.tribe != null) {
+            for (int i = 0; i < count; i++) {
+                simulationEngine.executeTick(this.tribe);
+            }
+        }
+    }
+
     public void updatePriorities(Map<String, Double> newPriorities) {
         if (this.tribe != null && newPriorities != null) {
             this.tribe.setPriorities(newPriorities);
         }
+    }
+
+    /**
+     * Resets the simulation to the initial starting state.
+     */
+    public void resetGame() {
+        this.tribe = null;
+        initGame(); 
     }
 }

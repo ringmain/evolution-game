@@ -27,7 +27,7 @@ const GameDashboard = () => {
     fetchTribe();
   }, []);
 
-  // Handle TICK request
+  // Handle single TICK request
   const handleTick = async () => {
     if (isTicking) return;
     setIsTicking(true);
@@ -46,26 +46,66 @@ const GameDashboard = () => {
     }
   };
 
+  // Handle MULTIPLE TICKS request
+  const handleMultipleTicks = async (count) => {
+    if (isTicking) return;
+    setIsTicking(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/tick/${count}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error(`Failed to execute ${count} ticks.`);
+      const updatedTribe = await response.json();
+      setTribe(updatedTribe);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsTicking(false);
+    }
+  };
+
+  // Handle RESET request
+  const handleReset = async () => {
+    if (isTicking) return;
+    // Optional: Add a simple confirmation dialog so users don't misclick
+    if (!window.confirm("Are you sure you want to completely reset the simulation?")) return;
+    
+    setIsTicking(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error('Failed to reset simulation.');
+      const freshlyResetTribe = await response.json();
+      setTribe(freshlyResetTribe);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsTicking(false);
+    }
+  };
+
   // --- STYLES ---
   
-  // Using CSS Grid to strictly enforce the 3-column layout
   const gridContainerStyle = {
     display: 'grid',
-    gridTemplateColumns: '1fr 2fr 1fr', // Left: 1 part, Middle: 2 parts, Right: 1 part
+    gridTemplateColumns: '1fr 2fr 1fr',
     gap: '24px',
     height: '100vh',
     width: '100vw',
     padding: '24px',
     boxSizing: 'border-box',
-    backgroundColor: '#0f172a', // slate-900
-    overflow: 'hidden', // Strict full-screen, no page scrolling
+    backgroundColor: '#0f172a',
+    overflow: 'hidden',
   };
 
   const panelStyle = {
-    backgroundColor: '#1e293b', // slate-800
+    backgroundColor: '#1e293b',
     borderRadius: '12px',
     padding: '20px',
-    border: '1px solid #334155', // slate-700
+    border: '1px solid #334155',
     display: 'flex',
     flexDirection: 'column',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
@@ -73,7 +113,7 @@ const GameDashboard = () => {
   };
 
   const headerStyle = {
-    color: '#38bdf8', // sky-400
+    color: '#38bdf8',
     textTransform: 'uppercase',
     letterSpacing: '1px',
     borderBottom: '2px solid #334155',
@@ -81,6 +121,25 @@ const GameDashboard = () => {
     marginBottom: '15px',
     marginTop: '0',
   };
+
+  // Helper for consistent button styling
+  const getButtonStyle = (colorHex, isSubdued = false) => ({
+    backgroundColor: 'transparent',
+    border: `2px solid ${colorHex}`,
+    color: colorHex,
+    padding: '16px 20px',
+    fontSize: isSubdued ? '1rem' : '1.1rem',
+    fontWeight: 'bold',
+    borderRadius: '8px',
+    cursor: isTicking ? 'not-allowed' : 'pointer',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    boxShadow: `0 0 15px ${colorHex}66, inset 0 0 10px ${colorHex}33`,
+    transition: 'all 0.2s ease',
+    opacity: isTicking ? 0.5 : 1,
+    width: '100%',
+    maxWidth: '300px'
+  });
 
   // --- RENDER STATES ---
 
@@ -119,7 +178,6 @@ const GameDashboard = () => {
       {/* COLUMN 2 (MIDDLE): Hominid Roster & LiveLog */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', overflow: 'hidden' }}>
         
-        {/* Roster Table Container */}
         <div style={{ ...panelStyle, flex: 1, padding: 0 }}>
           <div style={{ padding: '20px 20px 0 20px' }}>
             <h2 style={headerStyle}>Hominid Roster</h2>
@@ -139,15 +197,17 @@ const GameDashboard = () => {
               </thead>
               <tbody>
                 {tribe?.members?.map((hominid) => (
-                  <tr key={hominid.id} style={{ borderBottom: '1px solid #334155', backgroundColor: hominid.isAlpha ? 'rgba(234, 179, 8, 0.1)' : 'transparent' }}>
+                  <tr key={hominid.id} style={{ borderBottom: '1px solid #334155', backgroundColor: hominid.alpha ? 'rgba(234, 179, 8, 0.1)' : 'transparent' }}>
                     <td style={{ padding: '10px', fontFamily: 'monospace' }}>{hominid.id.substring(0, 8)}</td>
                     <td style={{ padding: '10px', color: hominid.gender === 'MALE' ? '#60a5fa' : '#f472b6', fontWeight: 'bold' }}>{hominid.gender}</td>
                     <td style={{ padding: '10px' }}>{hominid.ageInMonths}</td>
                     <td style={{ padding: '10px', color: hominid.health < 50 ? '#ef4444' : '#4ade80' }}>{hominid.health.toFixed(1)}</td>
                     <td style={{ padding: '10px', color: hominid.satiety < 50 ? '#ef4444' : '#4ade80' }}>{hominid.satiety.toFixed(1)}</td>
                     <td style={{ padding: '10px' }}>
-                      {hominid.isAlpha && <span style={{ backgroundColor: '#eab308', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>ALPHA</span>}
-                      {hominid.isBlockedMother && <span style={{ backgroundColor: '#c084fc', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginLeft: hominid.isAlpha ? '6px' : '0' }}>MOTHER</span>}
+                      {/* Fixed Jackson Serialization mappings: alpha, pregnant, blockedMother */}
+                      {hominid.alpha && <span style={{ backgroundColor: '#eab308', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '6px' }}>ALPHA</span>}
+                      {hominid.pregnant && <span style={{ backgroundColor: '#f472b6', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '6px' }}>PREGNANT</span>}
+                      {hominid.blockedMother && <span style={{ backgroundColor: '#c084fc', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>MOTHER</span>}
                     </td>
                   </tr>
                 ))}
@@ -156,49 +216,60 @@ const GameDashboard = () => {
           </div>
         </div>
         
-        {/* Live Event Log */}
         <LiveLog />
       </div>
 
       {/* COLUMN 3 (RIGHT): Controls */}
-      <div style={{ ...panelStyle, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
+      <div style={{ ...panelStyle, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', gap: '20px' }}>
+        
+        {/* Button 1: Single Tick (Blue) */}
         <button 
           onClick={handleTick}
           disabled={isTicking}
-          style={{
-            backgroundColor: 'transparent',
-            border: '2px solid #38bdf8',
-            color: '#38bdf8',
-            padding: '24px 40px',
-            fontSize: '1.25rem',
-            fontWeight: 'bold',
-            borderRadius: '8px',
-            cursor: isTicking ? 'not-allowed' : 'pointer',
-            textTransform: 'uppercase',
-            letterSpacing: '2px',
-            boxShadow: '0 0 15px rgba(56, 189, 248, 0.4), inset 0 0 10px rgba(56, 189, 248, 0.2)',
-            transition: 'all 0.2s ease',
-            opacity: isTicking ? 0.5 : 1,
-            width: '100%',
-            maxWidth: '300px'
-          }}
-          onMouseOver={(e) => {
-            if(!isTicking) {
-              e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.1)';
-              e.currentTarget.style.boxShadow = '0 0 25px rgba(56, 189, 248, 0.6), inset 0 0 15px rgba(56, 189, 248, 0.4)';
-            }
-          }}
-          onMouseOut={(e) => {
-            if(!isTicking) {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.boxShadow = '0 0 15px rgba(56, 189, 248, 0.4), inset 0 0 10px rgba(56, 189, 248, 0.2)';
-            }
-          }}
+          style={getButtonStyle('#38bdf8')}
+          onMouseOver={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'rgba(56, 189, 248, 0.1)')}
+          onMouseOut={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'transparent')}
         >
           {isTicking ? 'Processing...' : 'Next Tick (1 Mo)'}
         </button>
-      </div>
 
+        {/* Button 2: 10 Ticks (Emerald) */}
+        <button 
+          onClick={() => handleMultipleTicks(10)}
+          disabled={isTicking}
+          style={getButtonStyle('#10b981')}
+          onMouseOver={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.1)')}
+          onMouseOut={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          {isTicking ? 'Processing...' : 'Advance 10 Ticks'}
+        </button>
+
+        {/* Button 3: 100 Ticks (Green) */}
+        <button 
+          onClick={() => handleMultipleTicks(100)}
+          disabled={isTicking}
+          style={getButtonStyle('#4ade80')}
+          onMouseOver={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'rgba(74, 222, 128, 0.1)')}
+          onMouseOut={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          {isTicking ? 'Processing...' : 'Super Fast 100 Ticks'}
+        </button>
+
+        {/* Spacer to push Reset button slightly apart from the progression buttons */}
+        <div style={{ margin: '10px 0', borderBottom: '1px solid #334155', width: '80%' }}></div>
+
+        {/* Button 4: Reset Simulation (Red) */}
+        <button 
+          onClick={handleReset}
+          disabled={isTicking}
+          style={getButtonStyle('#ef4444', true)}
+          onMouseOver={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)')}
+          onMouseOut={(e) => !isTicking && (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          {isTicking ? 'Processing...' : 'Reset Simulation'}
+        </button>
+
+      </div>
     </div>
   );
 };
