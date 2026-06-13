@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
-const LiveLog = () => {
+const LiveLog = ({ messages = [] }) => {
+  const logEndRef = useRef(null);
+
+  // Auto-scroll to the bottom whenever new messages arrive
+  useEffect(() => {
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   const containerStyle = {
     backgroundColor: '#0f172a', // Deep slate background
     border: '1px solid #334155',
@@ -27,25 +36,28 @@ const LiveLog = () => {
     marginRight: '8px',
   };
 
-  // Placeholder logs as requested
-  const logs = [
-    "Rok 10,000,000 př. n. l.: Tlupa šimpanzů se usadila v tropickém lese.",
-    "Sezóna MONSOON začala. Ovoce je dostatek.",
-    "[SYSTEM]: Kmen byl úspěšně inicializován.",
-    "[SIMULACE]: Čekání na další cyklus (TICK)..."
-  ];
-
   return (
     <div style={containerStyle}>
-      <h3 style={{ margin: '0 0 10px 0', color: '#f8fafc', fontSize: '1rem', textTransform: 'uppercase' }}>
+      <h3 style={{ margin: '0 0 10px 0', color: '#f8fafc', fontSize: '1rem', textTransform: 'uppercase', flexShrink: 0 }}>
         Live Event Log
       </h3>
-      {logs.map((log, index) => (
-        <div key={index} style={lineStyle}>
+      
+      {(!messages || messages.length === 0) ? (
+        <div style={lineStyle}>
           <span style={timestampStyle}>{`>_`}</span>
-          {log}
+          Čekání na první události...
         </div>
-      ))}
+      ) : (
+        messages.map((log, index) => (
+          <div key={index} style={lineStyle}>
+            <span style={timestampStyle}>{`>_`}</span>
+            {log}
+          </div>
+        ))
+      )}
+      
+      {/* Invisible element to anchor our auto-scroll */}
+      <div ref={logEndRef} />
     </div>
   );
 };

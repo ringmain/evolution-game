@@ -24,10 +24,13 @@ public class SimulationEngine {
             return;
         }
 
+        // 1. Advance the global timeline
+        tribe.setTotalTicks(tribe.getTotalTicks() + 1);
+
         List<Hominid> members = tribe.getMembers();
         List<Hominid> newBirths = new ArrayList<>();
         
-        // 1. Hierarchical Food Distribution: Alphas eat first
+        // 2. Hierarchical Food Distribution: Alphas eat first
         members.sort(Comparator.comparing(Hominid::isAlpha).reversed());
 
         double totalFoodAvailable = calculateMonthlyFoodProduction(tribe);
@@ -36,10 +39,10 @@ public class SimulationEngine {
         while (iterator.hasNext()) {
             Hominid hominid = iterator.next();
 
-            // 2. Aging
+            // 3. Aging
             hominid.setAgeInMonths(hominid.getAgeInMonths() + 1);
 
-            // 3. Mother Blockage Counter
+            // 4. Mother Blockage Counter
             if (hominid.isBlockedMother()) {
                 hominid.setMonthsBlockedRemaining(hominid.getMonthsBlockedRemaining() - 1);
                 if (hominid.getMonthsBlockedRemaining() <= 0) {
@@ -48,7 +51,7 @@ public class SimulationEngine {
                 }
             }
 
-            // 4. Pregnancy Lifecycle
+            // 5. Pregnancy Lifecycle
             if (hominid.isPregnant()) {
                 hominid.setMonthsPregnancyRemaining(hominid.getMonthsPregnancyRemaining() - 1);
                 
@@ -76,6 +79,10 @@ public class SimulationEngine {
                             .build();
                             
                     newBirths.add(newborn);
+
+                    // Log the birth
+                    String czGender = newbornGender.equals("MALE") ? "Sameček" : "Samička";
+                    tribe.getLogMessages().add("Měsíc " + tribe.getTotalTicks() + ": Narodilo se nové mládě (" + czGender + ")!");
                 }
             } else if ("FEMALE".equals(hominid.getGender()) && 
                        hominid.getAgeInMonths() >= 144 && 
@@ -90,7 +97,7 @@ public class SimulationEngine {
                 }
             }
 
-            // 5. Food Consumption & Recovery/Starvation Logic
+            // 6. Food Consumption & Recovery/Starvation Logic
             double foodRequired = (hominid.getLifeStage() == Hominid.LifeStage.INFANT) ? 0.5 : 1.0;
 
             if (totalFoodAvailable >= foodRequired) {
@@ -116,7 +123,7 @@ public class SimulationEngine {
                 hominid.setHealth(hominid.getHealth() - 15.0);
             }
 
-            // 6. Organic Old Age Death & Health Death Handling
+            // 7. Organic Old Age Death & Health Death Handling
             boolean diedOfOldAge = false;
             int age = hominid.getAgeInMonths();
             
@@ -131,12 +138,52 @@ public class SimulationEngine {
             }
 
             if (hominid.getHealth() <= 0.0 || diedOfOldAge) {
+                // Log the death before removal
+                String alphaPrefix = hominid.isAlpha() ? "ALFA " : "";
+                String shortId = hominid.getId().toString().substring(0, 8);
+                tribe.getLogMessages().add("Měsíc " + tribe.getTotalTicks() + ": Šimpanz " + shortId + " (" + alphaPrefix + hominid.getGender() + ") zemřel věkem/hladem.");
+                
                 iterator.remove();
             }
         }
         
-        // 7. Safely add new births to the tribe to avoid ConcurrentModificationException
+        // 8. Safely add new births to the tribe
         members.addAll(newBirths);
+
+        // 9. Alpha Succession Logic
+        if (!members.isEmpty()) {
+            boolean hasAlpha = members.stream().anyMatch(Hominid::isAlpha);
+            
+            if (!hasAlpha) {
+                // Attempt to find the oldest adult male
+                Hominid newAlpha = members.stream()
+                        .filter(h -> h.getLifeStage() == Hominid.LifeStage.ADULT && "MALE".equals(h.getGender()))
+                        .max(Comparator.comparingInt(Hominid::getAgeInMonths))
+                        .orElseGet(() -> 
+                            // Fallback: oldest adult female
+                            members.stream()
+                                .filter(h -> h.getLifeStage() == Hominid.LifeStage.ADULT && "FEMALE".equals(h.getGender()))
+                                .max(Comparator.comparingInt(Hominid::getAgeInMonths))
+                                .orElse(null)
+                        );
+                
+                // Absolute fallback in case only infants/seniors are alive
+                if (newAlpha == null) {
+                    newAlpha = members.stream().max(Comparator.comparingInt(Hominid::getAgeInMonths)).orElse(null);
+                }
+
+                if (newAlpha != null) {
+                    newAlpha.setAlpha(true);
+                    int ageInYears = newAlpha.getAgeInMonths() / 12;
+                    tribe.getLogMessages().add("Měsíc " + tribe.getTotalTicks() + ": Novým vůdcem tlupy se stává " + newAlpha.getGender() + " (" + ageInYears + " let).");
+                }
+            }
+        }
+
+        // 10. Truncate log messages to prevent infinite memory growth (max 50 messages)
+        while (tribe.getLogMessages().size() > 50) {
+            tribe.getLogMessages().remove(0);
+        }
     }
 
     /**

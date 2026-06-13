@@ -68,7 +68,6 @@ const GameDashboard = () => {
   // Handle RESET request
   const handleReset = async () => {
     if (isTicking) return;
-    // Optional: Add a simple confirmation dialog so users don't misclick
     if (!window.confirm("Are you sure you want to completely reset the simulation?")) return;
     
     setIsTicking(true);
@@ -122,7 +121,6 @@ const GameDashboard = () => {
     marginTop: '0',
   };
 
-  // Helper for consistent button styling
   const getButtonStyle = (colorHex, isSubdued = false) => ({
     backgroundColor: 'transparent',
     border: `2px solid ${colorHex}`,
@@ -151,6 +149,11 @@ const GameDashboard = () => {
     return <div style={{ color: '#ef4444', padding: '20px', textAlign: 'center', marginTop: '20vh', backgroundColor: '#0f172a', height: '100vh' }}>[ERROR]: {error}</div>;
   }
 
+  // Calculate Years and Months for the UI
+  const totalTicks = tribe?.totalTicks || 0;
+  const yearsPassed = Math.floor(totalTicks / 12);
+  const monthsPassed = totalTicks % 12;
+
   return (
     <div style={gridContainerStyle}>
       
@@ -162,6 +165,14 @@ const GameDashboard = () => {
           <p style={{ margin: '8px 0' }}><strong>Species:</strong> <span style={{ color: '#94a3b8' }}>{tribe?.members?.[0]?.species || 'UNKNOWN'}</span></p>
           <p style={{ margin: '8px 0' }}><strong>Population:</strong> <span style={{ color: '#4ade80', fontSize: '1.2rem' }}>{tribe?.members?.length || 0}</span></p>
           <p style={{ margin: '8px 0' }}><strong>Current Season:</strong> <span style={{ color: tribe?.currentSeason === 'DRY' ? '#fbbf24' : '#38bdf8' }}>{tribe?.currentSeason || 'UNKNOWN'}</span></p>
+          
+          {/* New Simulation Time Stat */}
+          <p style={{ margin: '8px 0' }}>
+            <strong>Simulation Time:</strong>{' '}
+            <span style={{ color: '#c084fc', fontSize: '1.1rem' }}>
+              {yearsPassed} let, {monthsPassed} měs.
+            </span>
+          </p>
         </div>
 
         <h3 style={{ ...headerStyle, fontSize: '1rem', marginTop: '10px' }}>Active Priorities</h3>
@@ -204,7 +215,6 @@ const GameDashboard = () => {
                     <td style={{ padding: '10px', color: hominid.health < 50 ? '#ef4444' : '#4ade80' }}>{hominid.health.toFixed(1)}</td>
                     <td style={{ padding: '10px', color: hominid.satiety < 50 ? '#ef4444' : '#4ade80' }}>{hominid.satiety.toFixed(1)}</td>
                     <td style={{ padding: '10px' }}>
-                      {/* Fixed Jackson Serialization mappings: alpha, pregnant, blockedMother */}
                       {hominid.alpha && <span style={{ backgroundColor: '#eab308', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '6px' }}>ALPHA</span>}
                       {hominid.pregnant && <span style={{ backgroundColor: '#f472b6', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '6px' }}>PREGNANT</span>}
                       {hominid.blockedMother && <span style={{ backgroundColor: '#c084fc', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>MOTHER</span>}
@@ -216,13 +226,13 @@ const GameDashboard = () => {
           </div>
         </div>
         
-        <LiveLog />
+        {/* Pass the real log messages to the LiveLog component */}
+        <LiveLog messages={tribe?.logMessages} />
       </div>
 
       {/* COLUMN 3 (RIGHT): Controls */}
       <div style={{ ...panelStyle, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', gap: '20px' }}>
         
-        {/* Button 1: Single Tick (Blue) */}
         <button 
           onClick={handleTick}
           disabled={isTicking}
@@ -233,7 +243,6 @@ const GameDashboard = () => {
           {isTicking ? 'Processing...' : 'Next Tick (1 Mo)'}
         </button>
 
-        {/* Button 2: 10 Ticks (Emerald) */}
         <button 
           onClick={() => handleMultipleTicks(10)}
           disabled={isTicking}
@@ -244,7 +253,6 @@ const GameDashboard = () => {
           {isTicking ? 'Processing...' : 'Advance 10 Ticks'}
         </button>
 
-        {/* Button 3: 100 Ticks (Green) */}
         <button 
           onClick={() => handleMultipleTicks(100)}
           disabled={isTicking}
@@ -255,10 +263,8 @@ const GameDashboard = () => {
           {isTicking ? 'Processing...' : 'Super Fast 100 Ticks'}
         </button>
 
-        {/* Spacer to push Reset button slightly apart from the progression buttons */}
         <div style={{ margin: '10px 0', borderBottom: '1px solid #334155', width: '80%' }}></div>
 
-        {/* Button 4: Reset Simulation (Red) */}
         <button 
           onClick={handleReset}
           disabled={isTicking}

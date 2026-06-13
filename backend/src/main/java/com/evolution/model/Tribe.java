@@ -1,5 +1,6 @@
 package com.evolution.model;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.AllArgsConstructor;
@@ -20,4 +21,11 @@ public class Tribe {
     
     // "MONSOON" or "DRY"
     private String currentSeason; 
+
+    // Global timeline tracker
+    private int totalTicks;
+
+    // Narrative event logs
+    @Builder.Default
+    private List<String> logMessages = new ArrayList<>();
 }
