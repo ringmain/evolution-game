@@ -27,10 +27,23 @@ public class SimulationEngine {
         // 1. Advance the global timeline
         tribe.setTotalTicks(tribe.getTotalTicks() + 1);
 
+        // 2. Season Logic
+        int monthOfYear = (tribe.getTotalTicks() - 1) % 12;
+        String newSeason = (monthOfYear < 6) ? "MONSOON" : "DRY";
+        
+        if (!newSeason.equals(tribe.getCurrentSeason())) {
+            if ("DRY".equals(newSeason)) {
+                tribe.getLogMessages().add("Měsíc " + tribe.getTotalTicks() + ": Začalo období sucha (DRY). Produkce sběru je snížena o 50%!");
+            } else if ("MONSOON".equals(newSeason)) {
+                tribe.getLogMessages().add("Měsíc " + tribe.getTotalTicks() + ": Začalo období dešťů (MONSOON). Les překypuje ovocem.");
+            }
+            tribe.setCurrentSeason(newSeason);
+        }
+
         List<Hominid> members = tribe.getMembers();
         List<Hominid> newBirths = new ArrayList<>();
         
-        // 2. Hierarchical Food Distribution: Alphas eat first
+        // 3. Hierarchical Food Distribution: Alphas eat first
         members.sort(Comparator.comparing(Hominid::isAlpha).reversed());
 
         double totalFoodAvailable = calculateMonthlyFoodProduction(tribe);
@@ -39,10 +52,10 @@ public class SimulationEngine {
         while (iterator.hasNext()) {
             Hominid hominid = iterator.next();
 
-            // 3. Aging
+            // 4. Aging
             hominid.setAgeInMonths(hominid.getAgeInMonths() + 1);
 
-            // 4. Mother Blockage Counter
+            // 5. Mother Blockage Counter
             if (hominid.isBlockedMother()) {
                 hominid.setMonthsBlockedRemaining(hominid.getMonthsBlockedRemaining() - 1);
                 if (hominid.getMonthsBlockedRemaining() <= 0) {
@@ -51,7 +64,7 @@ public class SimulationEngine {
                 }
             }
 
-            // 5. Pregnancy Lifecycle
+            // 6. Pregnancy Lifecycle
             if (hominid.isPregnant()) {
                 hominid.setMonthsPregnancyRemaining(hominid.getMonthsPregnancyRemaining() - 1);
                 
@@ -97,7 +110,7 @@ public class SimulationEngine {
                 }
             }
 
-            // 6. Food Consumption & Recovery/Starvation Logic
+            // 7. Food Consumption & Recovery/Starvation Logic
             double foodRequired = (hominid.getLifeStage() == Hominid.LifeStage.INFANT) ? 0.5 : 1.0;
 
             if (totalFoodAvailable >= foodRequired) {
@@ -123,7 +136,7 @@ public class SimulationEngine {
                 hominid.setHealth(hominid.getHealth() - 15.0);
             }
 
-            // 7. Organic Old Age Death & Health Death Handling
+            // 8. Organic Old Age Death & Health Death Handling
             boolean diedOfOldAge = false;
             int age = hominid.getAgeInMonths();
             
@@ -147,10 +160,10 @@ public class SimulationEngine {
             }
         }
         
-        // 8. Safely add new births to the tribe
+        // 9. Safely add new births to the tribe
         members.addAll(newBirths);
 
-        // 9. Alpha Succession Logic
+        // 10. Alpha Succession Logic
         if (!members.isEmpty()) {
             boolean hasAlpha = members.stream().anyMatch(Hominid::isAlpha);
             
@@ -180,7 +193,7 @@ public class SimulationEngine {
             }
         }
 
-        // 10. Truncate log messages to prevent infinite memory growth (max 50 messages)
+        // 11. Truncate log messages to prevent infinite memory growth (max 50 messages)
         while (tribe.getLogMessages().size() > 50) {
             tribe.getLogMessages().remove(0);
         }
